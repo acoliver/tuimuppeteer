@@ -1,0 +1,40 @@
+Checking build status...
+Build is up-to-date.
+/profile load synthetic
+╭───────────╮
+│  > /quit  │
+╰───────────╯
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                                      │
+│  Agent powering down. Goodbye!                                                                                       │
+│                                                                                                                      │
+│  Performance                                                                                                         │
+│  Wall Time:                  11.7s                                                                                   │
+│  Agent Active:               0s                                                                                      │
+│    » API Time:               0s (0.0%)                                                                               │
+│    » Tool Time:              0s (0.0%)                                                                               │
+│                                                                                                                      │
+│  Token Tracking                                                                                                      │
+│  Tokens Per Minute:          100.0K                                                                                  │
+│  Throttle Wait Time:         0ms                                                                                     │
+│    » Session Token Usage:    Session Tokens - Input: 7,745, Output: 100, Cache: 0, Tool: 0, Thought: 0, Total:       │
+│                              7,845                                                                                   │
+│                                                                                                                      │
+│                                                                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
