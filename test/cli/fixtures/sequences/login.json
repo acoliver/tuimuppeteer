@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "v1",
+  "name": "login",
+  "steps": [
+    { "type": "macro", "name": "login", "args": { "username": "alice", "password": "secret" } },
+    { "type": "expect", "contains": "alice" }
+  ]
+}

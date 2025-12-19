@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "v1",
+  "macros": {
+    "login": [
+      { "type": "line", "text": "${username}" },
+      { "type": "line", "text": "${password}" }
+    ]
+  }
+}

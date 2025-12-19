@@ -1,0 +1,7 @@
+{
+  "schemaVersion": "v1",
+  "name": "verify",
+  "steps": [
+    { "type": "expect", "contains": "secret" }
+  ]
+}

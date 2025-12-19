@@ -1,0 +1,7 @@
+{
+  "schemaVersion": "v1",
+  "name": "only",
+  "steps": [
+    { "type": "expect", "contains": "Ready" }
+  ]
+}

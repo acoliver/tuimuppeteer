@@ -4,10 +4,17 @@
   "description": "Deterministic TUI harness",
   "type": "module",
   "main": "src/index.ts",
+  "bin": {
+    "tuimuppeteer": "src/cli/main.ts"
+  },
   "exports": {
     ".": {
       "import": "./src/index.ts",
       "bun": "./src/index.ts"
+    },
+    "./cli": {
+      "import": "./src/cli/main.ts",
+      "bun": "./src/cli/main.ts"
     }
   },
   "scripts": {
@@ -35,6 +42,7 @@
     "@types/node": "^24.10.1",
     "@typescript-eslint/eslint-plugin": "^8.48.1",
     "@typescript-eslint/parser": "^8.48.1",
+    "@vitest/coverage-v8": "^4.0.16",
     "@vitest/eslint-plugin": "^1.5.1",
     "eslint": "^9.39.1",
     "eslint-plugin-eslint-comments": "^3.2.0",
