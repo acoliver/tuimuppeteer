@@ -17,16 +17,12 @@
 - Implement step execution engine with a fake backend for tests.
 - Define report schema (Zod type) and emit JSON reports in tests.
 - Tests: step execution ordering, defaults, timeouts, error artifacts.
-- Add backend adapter contract tests (run against fake adapter, then tmux/pty).
+- Add backend adapter contract tests (run against fake adapter, then tmux).
 
 ## Phase 3: tmux backend (test-first)
 - Implement tmux adapter (send keys, capture screen/scrollback, exit).
 - Tests: adapter interface behavior using a stable shell harness.
 - Add basic tmux smoke scenario.
-
-## Phase 4: pty backend (test-first)
-- Implement pty adapter (send keys, capture screen, exit).
-- Tests: adapter interface behavior using the same harness.
 
 ## Phase 5: Runner CLI (test-first)
 - Add CLI commands to run scenario/sequence.

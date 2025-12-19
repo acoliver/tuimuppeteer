@@ -39,7 +39,7 @@ async function runFromOptions(options: RunOptions): Promise<ReportSchema> {
     options.sequenceName,
   );
 
-  const backend = createBackend(resolvedScenario.launch.backend);
+  const backend = createBackend();
   const report = await runScenario(
     resolvedScenario,
     Array.from(sequenceIndex.values()),
@@ -76,11 +76,8 @@ function resolveScenario(
   };
 }
 
-function createBackend(backend: 'tmux' | 'pty'): Backend {
-  if (backend === 'tmux') {
-    return new TmuxBackend();
-  }
-  throw new Error('Backend not supported: pty');
+function createBackend(): Backend {
+  return new TmuxBackend();
 }
 
 async function emitReport(

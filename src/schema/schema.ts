@@ -189,7 +189,7 @@ const launchSchema = z.object({
   command: z.string().min(1),
   args: z.array(z.string()).optional(),
   cwd: z.string().min(1).optional(),
-  backend: z.enum(['tmux', 'pty']),
+  backend: z.literal('tmux'),
   cols: z.number().int().positive().optional(),
   rows: z.number().int().positive().optional(),
   startupTimeoutMs: z.number().int().positive().optional(),

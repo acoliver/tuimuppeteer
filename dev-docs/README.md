@@ -30,13 +30,4 @@ Rationale (empirical):
 
 ## PTY experiment
 
-The PTY + `@xterm/headless` prototype remains as a debugging/reference tool:
-- `../prototypes/pty_smoke.mjs`
-
-Quick run:
-
-```sh
-SYN_API_KEY="$(cat ~/.synthetic_key)" node tuimuppeteer/prototypes/pty_smoke.mjs
-```
-
-Start with `findings_pty.md` for the detailed notes.
+Removed: PTY backend prototype work is out of scope for tuimuppeteer.

@@ -1,10 +1,10 @@
 # tuimuppeteer
 
-Tuimuppeteer is a Bun-first, JSON-driven harness for testing interactive TUIs. It runs terminal apps under a real backend (tmux or PTY), drives input, captures screen/scrollback, and asserts on terminal state.
+Tuimuppeteer is a Bun-first, JSON-driven harness for testing interactive TUIs. It runs terminal apps under tmux, drives input, captures screen/scrollback, and asserts on terminal state.
 
 ## Goals
 - JSON-first scripting with macros, sequences (tests), and scenarios (suites).
-- Backend-agnostic core with tmux/pty adapters.
+- Backend-agnostic core with tmux adapter.
 - Bun-only runtime with no JavaScript failover.
 
 ## Status

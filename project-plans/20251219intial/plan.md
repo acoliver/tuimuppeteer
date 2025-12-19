@@ -2,7 +2,7 @@
 
 ## Goals
 - JSON-first TUI harness with macros, sequences, scenarios.
-- Backend-agnostic core with tmux/pty adapters.
+- Backend-agnostic core with tmux adapter.
 - Bun-only runtime (no JS failover).
 - Publish via npm but execute TS with Bun, mirroring `llxprt --experimental-ui`.
 
@@ -43,7 +43,7 @@ Define schemas that mirror the JSON files:
   - `command: string` (path to a launcher script)
   - `args?: string[]`
   - `cwd?: string`
-  - `backend: "tmux" | "pty"`
+  - `backend: "tmux"`
   - `cols?: number`, `rows?: number`
 - `ArtifactsConfig`
   - `report?: "stdout" | string` (filepath)
@@ -108,7 +108,6 @@ Define a shared interface for adapters and test it via a contract test suite.
 
 ### Backend adapters
 - `tmux`: send keys, capture screen/scrollback, copy-mode scroll.
-- `pty`: send keys/mouse, capture screen (headless terminal), exit detection.
 - Shared interface: `sendKeys`, `captureScreen`, `captureScrollback`, `waitForExit`, `resize`.
 
 ## Unit testing standards (tuimuppeteer)
