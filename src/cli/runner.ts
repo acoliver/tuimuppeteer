@@ -8,14 +8,14 @@ import {
   parseSequence,
 } from '../load/loader.js';
 import { runScenario } from '../runtime/executor.js';
-import { reportSchema } from '../runtime/report-schema.js';
+import { reportSchema, type ReportSchema } from '../runtime/report-schema.js';
 import { TmuxBackend } from '../backend/tmux.js';
-import type { RunReport, Scenario, Sequence } from '../runtime/types.js';
+import type { Backend, Scenario, Sequence } from '../runtime/types.js';
 import { ensureDir, readJson, readJsonFiles } from './io.js';
 import { resolveScenarioPaths } from './paths.js';
 import type { RunOptions } from './args.js';
 
-async function runFromOptions(options: RunOptions): Promise<RunReport> {
+async function runFromOptions(options: RunOptions): Promise<ReportSchema> {
   const scenarioPath = options.scenarioPath;
   if (!scenarioPath) {
     throw new Error('Missing --scenario path');
@@ -39,7 +39,7 @@ async function runFromOptions(options: RunOptions): Promise<RunReport> {
     options.sequenceName,
   );
 
-  const backend = new TmuxBackend();
+  const backend = createBackend(resolvedScenario.launch.backend);
   const report = await runScenario(
     resolvedScenario,
     Array.from(sequenceIndex.values()),
@@ -76,8 +76,15 @@ function resolveScenario(
   };
 }
 
+function createBackend(backend: 'tmux' | 'pty'): Backend {
+  if (backend === 'tmux') {
+    return new TmuxBackend();
+  }
+  throw new Error('Backend not supported: pty');
+}
+
 async function emitReport(
-  report: RunReport,
+  report: ReportSchema,
   scenario: Scenario,
   options: RunOptions,
 ): Promise<void> {

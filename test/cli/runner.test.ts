@@ -23,7 +23,7 @@ describe('cli runner', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     if (fs.existsSync(reportPath)) {
-      fs.unlinkSync(reportPath, { force: true });
+      fs.unlinkSync(reportPath);
     }
   });
 

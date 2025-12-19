@@ -3,39 +3,41 @@ import { runScenario, runStep } from '../src/runtime/executor.js';
 import { FakeBackend } from '../src/runtime/fake-backend.js';
 
 const scenario = {
+  schemaVersion: 'v1' as const,
   name: 'basic',
   launch: {
     command: './start.sh',
-    args: [],
+    backend: 'tmux' as const,
+    args: [] as string[],
     cwd: '.',
   },
-  sequenceOrder: ['login', 'verify'],
+  sequenceOrder: ['login', 'verify'] as string[],
   defaults: {
     waitTimeoutMs: 200,
     pollMs: 10,
     scrollbackLines: 50,
     postTypeMs: 0,
   },
-} as const;
+};
 
 describe('executor', () => {
   it('runs sequences in order and stops on failure', async () => {
     const backend = new FakeBackend({ initialScreen: 'Ready' });
     const sequences = [
       {
-        schemaVersion: 'v1',
+        schemaVersion: 'v1' as const,
         name: 'login',
         steps: [
-          { type: 'line', text: 'hello' },
-          { type: 'expect', contains: 'hello' },
+          { type: 'line' as const, text: 'hello' },
+          { type: 'expect' as const, contains: 'hello' },
         ],
       },
       {
-        schemaVersion: 'v1',
+        schemaVersion: 'v1' as const,
         name: 'verify',
-        steps: [{ type: 'expect', contains: 'missing' }],
+        steps: [{ type: 'expect' as const, contains: 'missing' }],
       },
-    ] as const;
+    ];
 
     const report = await runScenario(scenario, sequences, [], backend);
 
@@ -58,16 +60,16 @@ describe('executor', () => {
 
     const sequences = [
       {
-        schemaVersion: 'v1',
+        schemaVersion: 'v1' as const,
         name: 'login',
-        steps: [{ type: 'line', text: 'hello' }],
+        steps: [{ type: 'line' as const, text: 'hello' }],
       },
       {
-        schemaVersion: 'v1',
+        schemaVersion: 'v1' as const,
         name: 'verify',
-        steps: [{ type: 'expect', contains: 'hello' }],
+        steps: [{ type: 'expect' as const, contains: 'hello' }],
       },
-    ] as const;
+    ];
 
     const reportPromise = runScenario(readyScenario, sequences, [], backend);
 
@@ -86,23 +88,23 @@ describe('executor', () => {
     const backend = new FakeBackend({ initialScreen: 'Ready' });
     const ctx = {
       backend,
-      macros: new Map(),
+      macros: {},
       defaults: {
         waitTimeoutMs: 50,
         pollMs: 10,
         scrollbackLines: 50,
         postTypeMs: 0,
       },
-    } as const;
+    };
 
-    const lineResult = await runStep({ type: 'line', text: 'abc' }, ctx);
+    const lineResult = await runStep({ type: 'line' as const, text: 'abc' }, ctx);
     expect(lineResult.status).toBe('passed');
     expect(backend.getSentLines()).toStrictEqual(['abc']);
 
-    const waitResult = await runStep({ type: 'waitFor', contains: 'abc' }, ctx);
+    const waitResult = await runStep({ type: 'waitFor' as const, contains: 'abc' }, ctx);
     expect(waitResult.status).toBe('passed');
 
-    const failResult = await runStep({ type: 'expect', contains: 'nope' }, ctx);
+    const failResult = await runStep({ type: 'expect' as const, contains: 'nope' }, ctx);
     expect(failResult.status).toBe('failed');
 
     await backend.resize(80, 24);
