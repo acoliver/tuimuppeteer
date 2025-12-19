@@ -21,16 +21,12 @@ class FakeBackend implements Backend {
     this.scrollback = options.initialScrollback ?? '';
   }
 
-  launch(command: string, args: string[], cwd?: string): Promise<{ pid: number }> {
-    void command;
-    void args;
-    void cwd;
+  launch(): Promise<{ pid: number }> {
     this.running = true;
     return Promise.resolve({ pid: 1234 });
   }
 
-  isRunning(pid: number): Promise<boolean> {
-    void pid;
+  isRunning(): Promise<boolean> {
     return Promise.resolve(this.running);
   }
 

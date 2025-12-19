@@ -4,9 +4,9 @@ import { FakeBackend } from '../../src/runtime/fake-backend.js';
 describe('backend contract', () => {
   it('supports launch, output capture, and exit flow', async () => {
     const backend = new FakeBackend({ initialScreen: 'Ready', exitAfterLines: ['quit'] });
-    const { pid } = await backend.launch('./start.sh', [], '.');
+    await backend.launch();
 
-    await expect(backend.isRunning(pid)).resolves.toBe(true);
+    await expect(backend.isRunning()).resolves.toBe(true);
 
     await backend.sendLine('hello');
     const screen = await backend.captureScreen();
@@ -18,7 +18,7 @@ describe('backend contract', () => {
 
   it('supports resize and scrollback capture', async () => {
     const backend = new FakeBackend({ initialScreen: 'Ready' });
-    await backend.launch('./start.sh', [], '.');
+    await backend.launch();
     await backend.resize(90, 30);
     expect(backend.getSize()).toStrictEqual({ cols: 90, rows: 30 });
 

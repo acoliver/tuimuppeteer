@@ -20,7 +20,7 @@ function nowMs(): number {
 
 interface ExecutionContext {
   backend: Backend;
-  macros: Map<string, Step[]>;
+  macros: Record<string, Step[]>;
   defaults: {
     waitTimeoutMs: number;
     pollMs: number;
@@ -178,55 +178,140 @@ async function runSequence(
   };
 }
 
-async function executeStepAction(step: Step, ctx: ExecutionContext): Promise<void> {
+
+async function executeLine(
+  step: Extract<Step, { type: 'line' }>,
+  ctx: ExecutionContext,
+): Promise<void> {
+  await ctx.backend.sendLine(step.text);
+  if ((step.postTypeMs ?? ctx.defaults.postTypeMs) > 0) {
+    await delay(step.postTypeMs ?? ctx.defaults.postTypeMs);
+  }
+}
+
+async function executeWaitStep(
+  step: Extract<Step, { type: 'waitFor' | 'waitForNot' }>,
+  ctx: ExecutionContext,
+): Promise<void> {
+  const negated = step.type === 'waitForNot';
+  await waitForMatcher(step, ctx, negated);
+}
+
+async function executeExpectStep(
+  step: Extract<Step, { type: 'expect' | 'expectCount' }>,
+  ctx: ExecutionContext,
+): Promise<void> {
+  if (step.type === 'expect') {
+    await expectMatcher(step, ctx);
+  } else {
+    await expectCount(step, ctx);
+  }
+}
+
+async function executeInputStep(
+  step: Extract<Step, { type: 'sendKeys' | 'keys' | 'paste' }>,
+  ctx: ExecutionContext,
+): Promise<void> {
+  if (step.type === 'sendKeys') {
+    await ctx.backend.sendKeys(step.keys.split(' '));
+  } else if (step.type === 'keys') {
+    await ctx.backend.sendKeys(step.keys);
+  } else {
+    await ctx.backend.paste(step.text);
+  }
+}
+
+async function executeInteractionStep(
+  step: Extract<Step, { type: 'line' | 'sendKeys' | 'keys' | 'paste' | 'sleep' | 'resize' }>,
+  ctx: ExecutionContext,
+): Promise<void> {
   switch (step.type) {
     case 'line':
-      await ctx.backend.sendLine(step.text);
-      if ((step.postTypeMs ?? ctx.defaults.postTypeMs) > 0) {
-        await delay(step.postTypeMs ?? ctx.defaults.postTypeMs);
-      }
-      break;
+      await executeLine(step, ctx);
+      return;
     case 'sendKeys':
-      await ctx.backend.sendKeys(step.keys.split(' '));
-      break;
     case 'keys':
-      await ctx.backend.sendKeys(step.keys);
-      break;
     case 'paste':
-      await ctx.backend.paste(step.text);
-      break;
+      await executeInputStep(step, ctx);
+      return;
     case 'sleep':
       await delay(step.ms);
-      break;
+      return;
     case 'resize':
       await ctx.backend.resize(step.cols, step.rows);
-      break;
-    case 'waitFor':
-      await waitForMatcher(step, ctx);
-      break;
-    case 'waitForNot':
-      await waitForMatcher(step, ctx, true);
-      break;
-    case 'expect':
-      await expectMatcher(step, ctx);
-      break;
-    case 'expectCount':
-      await expectCount(step, ctx);
-      break;
+      return;
+  }
+}
+
+async function executeSpecialStep(
+  step: Extract<Step, { type: 'waitForExit' | 'capture' | 'mouse' | 'scroll' | 'macro' }>,
+  ctx: ExecutionContext,
+): Promise<void> {
+  switch (step.type) {
     case 'waitForExit':
       await ctx.backend.waitForExit(step.timeoutMs ?? ctx.defaults.waitTimeoutMs);
-      break;
+      return;
     case 'capture':
       await captureOutput(step, ctx);
-      break;
+      return;
     case 'mouse':
     case 'scroll':
     case 'macro':
       throw new Error('Step type not supported in executor');
-    default:
-      step satisfies never;
-      throw new Error('Step type not supported in executor');
   }
+}
+
+const INTERACTION_TYPES = new Set([
+  'line',
+  'sendKeys',
+  'keys',
+  'paste',
+  'sleep',
+  'resize',
+]);
+
+const WAIT_TYPES = new Set(['waitFor', 'waitForNot']);
+
+const EXPECT_TYPES = new Set(['expect', 'expectCount']);
+
+const SPECIAL_TYPES = new Set(['waitForExit', 'capture', 'mouse', 'scroll', 'macro']);
+
+async function executeStepAction(step: Step, ctx: ExecutionContext): Promise<void> {
+  if (INTERACTION_TYPES.has(step.type)) {
+    await executeInteractionStep(
+      step as Extract<
+        Step,
+        { type: 'line' | 'sendKeys' | 'keys' | 'paste' | 'sleep' | 'resize' }
+      >,
+      ctx,
+    );
+    return;
+  }
+  if (WAIT_TYPES.has(step.type)) {
+    await executeWaitStep(
+      step as Extract<Step, { type: 'waitFor' | 'waitForNot' }>,
+      ctx,
+    );
+    return;
+  }
+  if (EXPECT_TYPES.has(step.type)) {
+    await executeExpectStep(
+      step as Extract<Step, { type: 'expect' | 'expectCount' }>,
+      ctx,
+    );
+    return;
+  }
+  if (SPECIAL_TYPES.has(step.type)) {
+    await executeSpecialStep(
+      step as Extract<
+        Step,
+        { type: 'waitForExit' | 'capture' | 'mouse' | 'scroll' | 'macro' }
+      >,
+      ctx,
+    );
+    return;
+  }
+  throw new Error('Step type not supported in executor');
 }
 
 async function runStep(
