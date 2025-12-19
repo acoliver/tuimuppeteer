@@ -12,10 +12,10 @@
   },
   "scripts": {
     "start": "bun run src/index.ts",
-    "lint": "bunx eslint \"**/*.{ts,tsx}\"",
-    "test": "bunx vitest run",
-    "typecheck": "bunx tsc --noEmit",
-    "check": "bunx eslint \"**/*.{ts,tsx}\" && bunx tsc --noEmit && bunx vitest run"
+    "lint": "bun x eslint \"**/*.{ts,tsx}\"",
+    "test": "bun x vitest run",
+    "typecheck": "bun x tsc --noEmit",
+    "check": "bun x eslint \"**/*.{ts,tsx}\" && bun x tsc --noEmit && bun x vitest run"
   },
   "keywords": [],
   "author": "",

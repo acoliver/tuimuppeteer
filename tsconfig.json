@@ -16,6 +16,6 @@
     "skipLibCheck": true,
     "baseUrl": "."
   },
-  "include": ["prototypes", "src", "dev-docs"],
+  "include": ["prototypes", "src", "test", "dev-docs", "*.ts"],
   "exclude": ["node_modules", "dist"]
 }
