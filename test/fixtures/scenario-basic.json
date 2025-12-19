@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "v1",
+  "name": "basic",
+  "launch": {
+    "command": "./launch_dummy.sh",
+    "backend": "tmux"
+  },
+  "defaults": {
+    "waitTimeoutMs": 15000,
+    "pollMs": 200
+  },
+  "artifacts": {
+    "report": "stdout",
+    "capturesDir": "./captures",
+    "redact": true
+  },
+  "sequenceOrder": ["app-ready", "login"]
+}

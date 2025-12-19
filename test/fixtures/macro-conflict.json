@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "v1",
+  "macros": {
+    "login": [
+      { "type": "line", "text": "conflict" }
+    ]
+  }
+}

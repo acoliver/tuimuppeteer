@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "v1",
+  "macros": {
+    "login": [
+      { "type": "waitFor", "contains": "Username" },
+      { "type": "line", "text": "${username}" },
+      { "type": "line", "text": "${password}" }
+    ],
+    "setProvider": [
+      { "type": "line", "text": "/provider ${provider}" }
+    ]
+  }
+}

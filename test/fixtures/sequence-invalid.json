@@ -1,0 +1,7 @@
+{
+  "schemaVersion": "v1",
+  "name": "bad-sequence",
+  "steps": [
+    { "type": "waitFor" }
+  ]
+}
