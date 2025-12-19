@@ -1,17 +1,47 @@
 {
-  "name": "tuimuppet",
+  "name": "tuimuppeteer",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Deterministic TUI harness",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "bun": "./src/index.ts"
+    }
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "bun run src/index.ts",
+    "lint": "bunx eslint \"**/*.{ts,tsx}\"",
+    "test": "bunx vitest run",
+    "typecheck": "bunx tsc --noEmit",
+    "check": "bunx eslint \"**/*.{ts,tsx}\" && bunx tsc --noEmit && bunx vitest run"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "engines": {
+    "node": ">=20",
+    "bun": ">=1.2.0"
+  },
   "dependencies": {
     "@xterm/headless": "^5.5.0",
     "node-pty": "^1.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/bun": "^1.3.4",
+    "@types/node": "^24.10.1",
+    "@typescript-eslint/eslint-plugin": "^8.48.1",
+    "@typescript-eslint/parser": "^8.48.1",
+    "@vitest/eslint-plugin": "^1.5.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-eslint-comments": "^3.2.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-sonarjs": "^3.0.5",
+    "globals": "^16.5.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15"
   }
 }

@@ -3,29 +3,14 @@
   PTY smoke prototype:
   - Spawns a command in a PTY (node-pty)
   - Feeds output into @xterm/headless to maintain a terminal grid + cursor
-  - Forwards terminal response sequences (CPR/DA/etc) back to the child
+  - Records a raw PTY transcript to make output-only assertions
 
-  Why forward terminal responses?
-  - Some TUIs (notably prompt_toolkit, used by code-puppy) send queries like:
-      - CPR (cursor position report): ESC[6n
-      - DA (device attributes): ESC[c
-      - Kitty protocol query: ESC[?u
-    A real terminal responds on stdin with sequences like ESC[<row>;<col>R.
-    With node-pty + xterm/headless we can emulate that by:
-      - feeding child stdout -> xterm/headless
-      - forwarding xterm/headless "onData" -> child stdin
+  Notes on reliability:
+  - Terminal UIs often use cursor-motion + rewrite-in-place sequences. If you
+    dump the raw output as plain text, spinners can look like many lines.
+  - xterm/headless is useful for snapshots but should not be the sole oracle.
 
-  Important findings so far:
-  - LLXPRT interactive submit DOES work under PTY when sending CR ("\r").
-    The earlier "Enter doesn't submit" symptom was due to driving too early or
-    to the harness not being a true TTY; PTY-based runs are fine.
-  - code-puppy interactive prints:
-      "WARNING: your terminal doesn't support cursor position requests (CPR)."
-    unless we implement the response forwarding described above.
-  - code-puppy also supports non-interactive mode via `--prompt`, which is a
-    reliable fallback if full interactive automation is flaky.
-
-  This is a prototype, not the final engine.
+  This is a prototype harness.
 */
 
 import os from 'node:os';
@@ -52,9 +37,6 @@ function getHome() {
 }
 
 function redactSecrets(text) {
-  // Minimal redaction:
-  // - We may read `~/.synthetic_key` to set env vars, but never print it.
-  // - We avoid printing the home directory path to reduce accidental leakage.
   const home = os.homedir().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return text
     .replace(new RegExp(home, 'g'), '~')
@@ -63,8 +45,6 @@ function redactSecrets(text) {
 }
 
 function stripAnsi(text) {
-  // Prototype-grade ANSI stripper: remove CSI and OSC sequences that otherwise
-  // break simple substring matching (e.g. "esc to cancel" is interleaved with color codes).
   return text
     // OSC ... BEL
     .replace(/\x1b\][^\x07]*\x07/g, '')
@@ -73,8 +53,6 @@ function stripAnsi(text) {
     // Single ESC leftovers
     .replace(/\x1b/g, '');
 }
-
-
 
 function termToPlainText(term) {
   const buf = term.buffer.active;
@@ -119,7 +97,6 @@ function snapshotToJson(term) {
 }
 
 function getCursor(term) {
-  // xterm/headless uses _core for some state; keep best-effort for prototype.
   const x =
     typeof term.cursorX === 'number'
       ? term.cursorX
@@ -132,7 +109,6 @@ function getCursor(term) {
 }
 
 function hashScreen(text) {
-  // Simple non-crypto hash for stability detection.
   let h = 2166136261;
   for (let i = 0; i < text.length; i += 1) {
     h ^= text.charCodeAt(i);
@@ -187,51 +163,25 @@ async function waitForTextToDisappear({ term, contains, timeoutMs = 15000, pollM
   throw new Error(`Timed out waiting for text to disappear: ${contains}`);
 }
 
-async function waitForAnyText({ term, containsAny, timeoutMs = 15000, pollMs = 50 }) {
-  if (!Array.isArray(containsAny) || containsAny.length === 0) {
-    throw new Error('waitForAnyText requires a non-empty `containsAny` array');
-  }
-  const needles = containsAny.filter((s) => typeof s === 'string' && s.length > 0);
-  if (needles.length === 0) {
-    throw new Error('waitForAnyText requires at least one non-empty string needle');
-  }
-
-  const start = nowMs();
-  while (nowMs() - start < timeoutMs) {
-    const text = stripAnsi(termToPlainText(term));
-    for (const needle of needles) {
-      if (text.includes(needle)) return needle;
-    }
-    await sleep(pollMs);
-  }
-
-  throw new Error(`Timed out waiting for any text: ${needles.join(', ')}`);
-}
-
-
-function sendKeys(child, keys) {
-  child.write(keys);
-}
-
-function sendLine(child, line) {
-  // node-pty expects actual control characters, not the two-character string "\\r".
-  child.write(line + '\r');
-}
-
-
-
-
-function waitForExit(child, timeoutMs = 15000) {
+async function waitForExit(child, timeoutMs = 15000) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error(`Timed out waiting for process exit after ${timeoutMs}ms`));
     }, timeoutMs);
 
-    child.onExit(() => {
+    child.onExit((e) => {
       clearTimeout(timer);
-      resolve();
+      resolve(e);
     });
   });
+}
+
+function sendLine(child, line) {
+  child.write(line + '\r');
+}
+
+function readKeyfileTrimmed(keyfilePath) {
+  return fs.readFileSync(keyfilePath, 'utf8').trim();
 }
 
 async function runApp({
@@ -246,7 +196,7 @@ async function runApp({
   const rows = 30;
 
   const term = new Terminal({ cols, rows, allowProposedApi: true });
-  term.write('\u001b[?25h'); // ensure cursor visible if supported
+  term.write('\u001b[?25h');
 
   let childClosed = false;
 
@@ -258,15 +208,11 @@ async function runApp({
     env: {
       ...process.env,
       TERM: 'xterm-256color',
-      // Some TUIs depend on this to decide whether to enable readline-style features.
-      TERM_PROGRAM: 'tuimuppet',
+      TERM_PROGRAM: 'tuimuppeteer',
       ...(env ?? {}),
     },
   });
 
-  // Forward terminal response sequences (e.g., CPR/DA) back to the app.
-  // This is required for prompt_toolkit (code-puppy interactive).
-  // It can also interfere with other TUIs, so it's configurable per app.
   if (forwardTerminalResponses) {
     term.onData((data) => {
       if (childClosed) return;
@@ -322,10 +268,12 @@ async function runApp({
     }
   };
 
+  const getTranscript = () => transcript;
+
   return {
     term,
     child,
-    transcript: () => transcript,
+    getTranscript,
     dumpState,
     dumpSnapshotJson,
     dumpTranscriptTail,
@@ -333,105 +281,111 @@ async function runApp({
   };
 }
 
+async function waitForTranscript({ getTranscript, contains, timeoutMs = 15000, pollMs = 50 }) {
+  if (typeof contains !== 'string' || contains.length === 0) {
+    throw new Error('waitForTranscript requires a non-empty `contains` string');
+  }
+  const start = nowMs();
+  while (nowMs() - start < timeoutMs) {
+    if (stripAnsi(getTranscript()).includes(contains)) return;
+    await sleep(pollMs);
+  }
+  throw new Error(`Timed out waiting for transcript text: ${contains}`);
+}
+
 async function driveLlxprt({ repoRoot, syntheticKeyPath }) {
-  const { term, child, dumpState, dumpTranscriptTail, stop, dumpSnapshotJson } =
+  const { term, child, getTranscript, dumpState, dumpTranscriptTail, stop, dumpSnapshotJson } =
     await runApp({
       name: 'llxprt',
       command: 'node',
       args: ['scripts/start.js', '--profile-load', 'synthetic', '--keyfile', syntheticKeyPath],
       cwd: repoRoot,
-      // For determinism, emulate a real terminal as closely as possible.
       forwardTerminalResponses: true,
     });
 
-  async function quitGracefully() {
-    // Only quit once we're clearly back at the interactive prompt.
-    await waitForText({ term, contains: '>>>', timeoutMs: 60000 });
-    await sleep(100);
-
-    // code-puppy advertises both `/exit` and `/quit`, but in practice it accepts `/exit`.
-    sendLine(child, '/exit');
-
-    // Prove we left interactive mode by waiting for the prompt to disappear.
-    try {
-      await waitForTextToDisappear({ term, contains: '>>>', timeoutMs: 3000 });
-    } catch {
-      // Retry once; if it still doesn't disappear, treat as quit-not-accepted.
-      sendLine(child, '/exit');
-      await waitForTextToDisappear({ term, contains: '>>>', timeoutMs: 3000 });
-    }
-
-    await waitForExit(child, 5000);
-  }
-
   try {
-    // Wait for interactive prompt.
-    try {
-      await waitForText({ term, contains: '>>>', timeoutMs: 60000 });
-      await stableFor({ term, durationMs: 1500 });
-      await sleep(250);
-    } catch {
-      dumpState('timeout-waiting-prompt');
-      dumpTranscriptTail('timeout-waiting-prompt');
-      throw new Error('code-puppy did not reach interactive prompt within timeout');
-    }
+    await waitForText({ term, contains: 'Type your message', timeoutMs: 60000 });
+    await stableFor({ term, durationMs: 1500 });
+    await sleep(250);
 
-    // Avoid any marker text we might type (it can be echoed at the prompt).
-    const codePuppyPrompt = 'Write me a haiku and include the word "mouth" exactly once.';
-    sendLine(child, codePuppyPrompt);
+    // Output-only completion: require the assistant output marker (the star prefix)
+    // and that we return to the input prompt afterwards.
+    sendLine(child, 'Write me a haiku and include the word "mouth" exactly once.');
 
-    try {
-      // code-puppy prints a stable prefix for the agent's answer.
-      await waitForText({ term, contains: 'AGENT RESPONSE', timeoutMs: 180000 });
-      // The prompt is present in the terminal transcript even when it's not rendered
-      // on-screen (prompt_toolkit cursor positioning / clears). Treat transcript as
-      // authoritative for this particular prompt.
-      const transcriptNeedle = '>>> ';
-      const start = nowMs();
-      while (nowMs() - start < 180000) {
-        if (stripAnsi(transcript()).includes(transcriptNeedle)) break;
-        await sleep(50);
-      }
-      if (!stripAnsi(transcript()).includes(transcriptNeedle)) {
-        throw new Error('Timed out waiting for code-puppy prompt in transcript');
-      }
-    } catch {
-      dumpState('timeout-waiting-marker');
-      dumpTranscriptTail('timeout-waiting-marker');
-      throw new Error('code-puppy did not appear to complete a response within timeout');
-    }
-
-    // Wait for prompt to come back.
-    try {
-      await waitForText({ term, contains: '>>>', timeoutMs: 180000 });
-    } catch {
-      dumpState('timeout-waiting-finish');
-      dumpTranscriptTail('timeout-waiting-finish');
-      throw new Error('code-puppy did not return to prompt within timeout');
-    }
+    await waitForTranscript({ getTranscript, contains: '\n ', timeoutMs: 180000 });
+    await waitForText({ term, contains: 'Type your message', timeoutMs: 180000 });
 
     dumpState('after-haiku');
     dumpSnapshotJson('after-haiku');
 
-    try {
-      await quitGracefully();
-    } catch {
-      dumpState('code_puppy-exit-timeout-nonfatal');
-      dumpTranscriptTail('code_puppy-exit-timeout-nonfatal');
+    // Deterministic /quit: require shutdown text + actual process exit.
+    // (No fallback kill on the success path.)
+    const quitStart = nowMs();
+    sendLine(child, '/quit');
+
+    // The shutdown text appears in the rendered TUI. In practice the raw transcript
+    // may not contain it (alternate screen/cursor movements), so check both oracles.
+    await waitForText({ term, contains: 'agent powering down', timeoutMs: 5000 });
+    await waitForExit(child, 1500);
+
+    const quitElapsed = nowMs() - quitStart;
+    if (quitElapsed > 1500) {
+      throw new Error(`LLXPRT quit exceeded 1500ms (${quitElapsed}ms)`);
     }
+  } catch (err) {
+    dumpState('error');
+    dumpTranscriptTail('error');
+    throw err;
+  } finally {
+    await stop();
+  }
+}
+
+async function driveCodePuppy({ syntheticKeyPath }) {
+  const synApiKey = readKeyfileTrimmed(syntheticKeyPath);
+
+  const { term, child, getTranscript, dumpState, dumpTranscriptTail, stop, dumpSnapshotJson } =
+    await runApp({
+      name: 'code_puppy',
+      command: 'code-puppy',
+      args: ['--interactive'],
+      cwd: process.cwd(),
+      env: {
+        SYN_API_KEY: synApiKey,
+      },
+      forwardTerminalResponses: true,
+    });
+
+  try {
+    // prompt_toolkit prompt may not reliably render into the grid; use transcript.
+    await waitForTranscript({ getTranscript, contains: '>>>', timeoutMs: 60000 });
+    await stableFor({ term, durationMs: 1500 });
+    await sleep(250);
+
+    sendLine(child, 'Write me a haiku and include the word "mouth" exactly once.');
+
+    await waitForTranscript({ getTranscript, contains: 'AGENT RESPONSE', timeoutMs: 180000 });
+    await waitForTranscript({ getTranscript, contains: '>>>', timeoutMs: 180000 });
+
+    dumpState('after-haiku');
+    dumpSnapshotJson('after-haiku');
+
+    sendLine(child, '/exit');
+    await waitForExit(child, 5000);
+  } catch (err) {
+    dumpState('error');
+    dumpTranscriptTail('error');
+    throw err;
   } finally {
     await stop();
   }
 }
 
 function repoRootFromScriptLocation() {
-  // We want this prototype to work regardless of CWD.
-  // Current file: tuimuppet/prototypes/pty_smoke.mjs
-  // Repo root we want: ../llxprt-code (sibling to tuimuppet/)
   const __filename = new URL(import.meta.url).pathname;
   const __dirname = path.dirname(__filename);
-  const tuimuppetRoot = path.resolve(__dirname, '..');
-  return path.resolve(tuimuppetRoot, '..', 'llxprt-code');
+  const tuimuppeteerRoot = path.resolve(__dirname, '..');
+  return path.resolve(tuimuppeteerRoot, '..', 'llxprt-code');
 }
 
 async function main() {
@@ -445,7 +399,6 @@ async function main() {
   process.stdout.write(`Expecting key: ${syntheticKey}\n`);
 
   await driveLlxprt({ repoRoot, syntheticKeyPath: syntheticKey });
-
   await driveCodePuppy({ syntheticKeyPath: syntheticKey });
 }
 

@@ -1,4 +1,4 @@
-# tuimuppet: requirements (draft)
+# tuimuppeteer: requirements (draft)
 
 ## Goal
 Provide a JSON-first, general-purpose framework for testing interactive TUIs (text user interfaces) by driving them through a real PTY/terminal emulation layer and asserting on terminal state.

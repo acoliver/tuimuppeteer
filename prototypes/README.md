@@ -1,23 +1,24 @@
 # Prototypes
 
+## Status
+
+The `node-pty` + `@xterm/headless` approach was an experiment.
+
+Findings:
+- It is good at spawning and sending keystrokes, and we can reliably detect hard process exit.
+- It is not currently reliable for LLXPRT's clean shutdown UX (`/quit` showing "Agent powering down" and the process exiting quickly), and it does not provide tmux-like scrollback.
+
+Recommended path forward for tuimuppeteer: drive these TUIs under tmux (like the LLXPRT tmux harness in `llxprt-code/scripts/oldui-tmux-harness.js`).
+
 ## `pty_smoke.mjs`
 
-PTY-driven smoke test for driving TUIs using `node-pty` + `@xterm/headless`.
+PTY-driven smoke test using `node-pty` + `@xterm/headless`.
 
-### What it validates
-
-- `llxprt-code` can be driven interactively enough to submit a prompt and render a response.
-- `code-puppy` can be driven interactively under a real PTY (avoids prompt_toolkit stdin EOF/cancel spam).
-- Both are asked to produce a haiku containing a marker word (`mouth`) for robust detection.
+- Keep this as a reference / debugging tool.
+- Do not treat it as the canonical automation path for LLXPRT/code-puppy.
 
 ### Run
 
 ```sh
-# code-puppy needs SYN_API_KEY for the synthetic endpoint
-SYN_API_KEY="$(cat ~/.synthetic_key)" node tuimuppet/prototypes/pty_smoke.mjs
+SYN_API_KEY="$(cat ~/.synthetic_key)" node tuimuppeteer/prototypes/pty_smoke.mjs
 ```
-
-### Notes
-
-- We intentionally do **not** depend on brittle UI glyphs; we wait for the marker word instead.
-- `/quit` is issued for both apps, but process termination is treated as best-effort (some TUI stacks can linger).

@@ -71,7 +71,7 @@ Observed behavior:
 - On submission it attempts to load a model (`synthetic-GLM-4.6`) and then fails with:
   - `Unexpected error: status_code: 401 ... Invalid API Key.`
 
-Implication for tuimuppet:
+Implication for tuimuppeteer:
 - The PTY backend is sufficient to drive the UI, but the environment needs a valid code-puppy model/provider configuration.
 - This is separate from PTY feasibility.
 

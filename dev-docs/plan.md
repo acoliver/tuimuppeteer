@@ -1,4 +1,4 @@
-# tuimuppet: overall plan (draft)
+# tuimuppeteer: overall plan (draft)
 
 ## Phase 0: Prove the PTY backend (prototype)
 - Choose a maintained Node PTY library and a terminal emulator usable in Node.
